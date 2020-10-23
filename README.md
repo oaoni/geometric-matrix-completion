@@ -1,10 +1,11 @@
-# functional-matrix-completion
-Geometric matrix completion: A functional View. Preprint : https://hal.archives-ouvertes.fr/hal-02871840
+# geometric-matrix-completion
+Implementation from Geometric matrix completion: A functional View. Preprint : https://hal.archives-ouvertes.fr/hal-02871840
 
-# Data
-We attach some of the matrix data here for example: Netflix Synthetic ratings and the respective graphs.
+## Requirements
+python (3.6)
+tensorflow (1.13.1)
 
-If you find this codebase helpful in your research, please cite:
+Reference
 
 @InProceedings{func_completion_sharma,
 
