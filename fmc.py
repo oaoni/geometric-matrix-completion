@@ -4,6 +4,9 @@ import tensorflow as tf
 import numpy as np
 import random
 import pandas as pd
+import seaborn as sns
+import matplotlib.gridspec
+from scipy.cluster.hierarchy import linkage
 
 random.seed(0)
 np.random.seed(0)
@@ -20,7 +23,7 @@ import IPython
 class FMC:
     "Functional geometric matrix completion"
     def __init__(self,M,M_training,M_test,S_training,S_test,
-                 W_rows,W_cols,p_max,q_max,p_init,q_init,lr,m,n,use_side=True):
+                 W_rows,W_cols,p_max,q_max,p_init,q_init,lr,m,n,use_side=True,cluster=True):
 
 
 
@@ -29,6 +32,9 @@ class FMC:
         self.n = n
         self.M = M
         self.S_train = S_training
+        self.S_test = S_test
+        self.cluster = cluster
+        self.linkage = linkage(M, method='ward')
 
         if use_side:
             L_rows, L_cols = self._compute_laplacians(W_rows, W_cols)
@@ -117,15 +123,29 @@ class FMC:
 
             train_loss_log = []
             test_loss_log = []
+            train_corr_log = []
+            test_corr_log = []
             iter_log = []
 
             for iter in range(num_iters):
 
                 if iter%1000 == 0:
-                    train_loss_np, test_loss_np, corr_metric = self.sess.run([self.train_loss, self.test_loss,self.corr_metric],
-                    feed_dict={'ground:0':self.M, 'mask:0':self.S_train.astype(float)})
+                    #Compute training and test loss
+                    train_loss_np, test_loss_np = self.sess.run([self.train_loss, self.test_loss])
                     train_loss_log.append(train_loss_np)
                     test_loss_log.append(test_loss_np)
+
+                    #Produce training and test correlation vectors
+                    train_corr = self.sess.run(self.corr_metric,feed_dict={'ground:0':self.M, 'mask:0':self.S_train})
+                    test_corr = self.sess.run(self.corr_metric,feed_dict={'ground:0':self.M, 'mask:0':self.S_test})
+                    #Compute correlation
+                    train_ground, train_pred = train_corr
+                    test_ground, test_pred = test_corr
+
+                    train_corr_log.append(np.corrcoef(train_ground,train_pred)[0][-1])
+                    test_corr_log.append(np.corrcoef(test_ground,test_pred)[0][-1])
+
+                    #Record iteration
                     iter_log.append(iter)
                     if (plot) and (iter%5000 == 0):
                         IPython.display.clear_output()
@@ -133,19 +153,37 @@ class FMC:
                         print("iter " + str(iter) +" ,train loss: "+str(train_loss_np)+", test loss: " + str(test_loss_np) )
                         print("Hyperparameters: lr: {}, m: {}, n: {}".format(self.lr, self.m, self.n))
                         X_np = self.sess.run(self.X)
-                        fig, ax = plt.subplots(1,3, figsize=(15,5))
-                        ax[0].imshow(self.M)
-                        ax[0].set_title("True")
-                        ax[1].imshow(X_np)
-                        ax[1].set_title("X")
-                        ax[2].plot(iter_log[3:], train_loss_log[3:], 'r', iter_log[3:], test_loss_log[3:], 'b')
-                        ax[2].set_title("Train and Test Loss")
+                        fig, ax = plt.subplots(1,2, figsize=(15,5))
+                        if self.cluster:
+
+                            cg1 = sns.clustermap(self.M,
+                                row_linkage=self.linkage,
+                                col_linkage=self.linkage,figsize=(6,6))
+
+                            cg2 = sns.clustermap(X_np,
+                                row_linkage=self.linkage,
+                                col_linkage=self.linkage,figsize=(6,6))
+
+                        else:
+                            ax[0].imshow(self.M)
+                            ax[0].set_title("True")
+                            ax[1].imshow(X_np)
+                            ax[1].set_title("X")
+                        ax[0].plot(iter_log[3:], train_loss_log[3:], 'r', iter_log[3:], test_loss_log[3:], 'b')
+                        ax[0].set_title("Train and Test Loss")
+                        ax[1].plot(iter_log[3:], train_corr_log[3:], 'r', iter_log[3:], test_corr_log[3:], 'b')
+                        ax[1].set_title("Train and Test Correlation")
                         plt.legend(['Train Loss','Test Loss'])
                         plt.show()
-                        print('cor: ',corr_metric)
+                        display(grid)
+
+
+
                     summary_dic = {'learning_rate':self.lr,'m':self.m,'n':self.n,'num_iters':num_iters,
                                    'train_loss':train_loss_log[-1],'test_loss':test_loss_log[-1],
-                                   'best_train_loss':np.array(train_loss_log).min(),'best_test_loss':np.array(test_loss_log).min()}
+                                   'best_train_loss':np.array(train_loss_log).min(),'best_test_loss':np.array(test_loss_log).min(),
+                                   'train_corr':train_corr_log[-1],'test_corr':test_corr_log[-1],
+                                   'best_train_corr':np.array(train_corr_log).max(),'best_test_corr':np.array(test_corr_log).max()}
 
                     self.summary_dic = summary_dic
 
@@ -189,12 +227,12 @@ class FMC:
 
         flat_mask = tf.reshape(mask,[-1]) #flatten tensor
         flat_mask = tf.cast(flat_mask, tf.bool) #astype boolean mask
-        ground_linear = tf.boolean_mask(tf.reshape(ground,[-1]), flat_mask)
-        pred_linear = tf.boolean_mask(tf.reshape(pred,[-1]), flat_mask)
+        ground_linear = tf.cast(tf.boolean_mask(tf.reshape(ground,[-1]), flat_mask),tf.float32)
+        pred_linear = tf.cast(tf.boolean_mask(tf.reshape(pred,[-1]), flat_mask), tf.float32)
 
-        corr = tf.contrib.metrics.streaming_pearson_correlation(ground_linear,pred_linear)
+        # corr = tf.contrib.metrics.streaming_pearson_correlation(ground_linear,pred_linear)
 
-        return corr
+        return ground_linear, pred_linear
 
     def _to_numpy(self,arrays):
 
