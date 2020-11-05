@@ -141,16 +141,19 @@ class FMC:
                     #Compute correlation
                     train_ground, train_pred = train_corr
                     test_ground, test_pred = test_corr
-
-                    train_corr_log.append(np.corrcoef(train_ground,train_pred)[0][-1])
-                    test_corr_log.append(np.corrcoef(test_ground,test_pred)[0][-1])
+                    
+                    train_corr_np = np.corrcoef(train_ground,train_pred)[0][-1]
+                    test_corr_np = np.corrcoef(test_ground,test_pred)[0][-1]
+                    train_corr_log.append(train_corr_np)
+                    test_corr_log.append(test_corr_np)
 
                     #Record iteration
                     iter_log.append(iter)
                     if (plot) and (iter%5000 == 0):
                         IPython.display.clear_output()
 
-                        print("iter " + str(iter) +" ,train loss: "+str(train_loss_np)+", test loss: " + str(test_loss_np) )
+                        print("iter " + str(iter) +" ,train loss: "+str(train_loss_np)+", test loss: " + str(test_loss_np)\
+                               + " ,train corr: " + str(train_corr_np) + " ,test corr: " + str(test_corr_np))
                         print("Hyperparameters: lr: {}, m: {}, n: {}".format(self.lr, self.m, self.n))
                         X_np = self.sess.run(self.X)
                         fig, ax = plt.subplots(1,2, figsize=(15,5))
