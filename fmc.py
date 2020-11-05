@@ -22,6 +22,8 @@ class FMC:
     def __init__(self,M,M_training,M_test,S_training,S_test,
                  W_rows,W_cols,p_max,q_max,p_init,q_init,lr,m,n,use_side=True):
 
+
+
         self.lr = lr
         self.m = m
         self.n = n
@@ -37,23 +39,22 @@ class FMC:
             eig_vals_row = np.zeros(m)
             eig_vals_col = np.zeros(n)
 
+        #Define the graph
+        self.tf_graph = tf.Graph()
+        g = self.tf_graph
+        with g.as_default():
+            #Build model
+            self.build_model(M_training,M_test,S_training,S_test,eig_vecs_row,eig_vecs_col,
+                        eig_vals_row,eig_vals_col,p_max,q_max,p_init,q_init,m,n)
 
-        #Build model
-        self.build_model(M_training,M_test,S_training,S_test,eig_vecs_row,eig_vecs_col,
-                    eig_vals_row,eig_vals_col,p_max,q_max,p_init,q_init,m,n)
 
-        # Create a session for running Ops on the Graph.
-        self.config = tf.ConfigProto(allow_soft_placement=True)
-        self.config.gpu_options.allow_growth = True
-        self.sess = tf.Session(config=self.config)
-        self.sess.run(tf.local_variables_initializer())
-        self.sess.run(tf.global_variables_initializer())
+
 
     def build_model(self,M_training,M_test,S_training,S_test,eig_vecs_row,eig_vecs_col,
                     eig_vals_row,eig_vals_col,p_max,q_max,p_init,q_init,m,n):
         """Create graph"""
 
-        tf.reset_default_graph()
+        # tf.reset_default_graph()
 
         lr = tf.placeholder(tf.float32, name="lr")
         C_init = np.zeros([p_max, q_max], dtype = np.float32)
@@ -103,43 +104,53 @@ class FMC:
         self.corr_metric = self._corr_metric(ground=ground, pred=self.X, mask=mask)
 
     def fit(self, num_iters, grid=[], plot=False):
+        g = self.tf_graph
+        with g.as_default():
+            # Create a session for running Ops on the Graph.
+            self.config = tf.ConfigProto(allow_soft_placement=True)
+            self.config.gpu_options.allow_growth = True
+            # self.sess = tf.Session(config=self.config)
+            self.sess = tf.Session(config=self.config)
 
-        train_loss_log = []
-        test_loss_log = []
-        iter_log = []
+            self.sess.run(tf.local_variables_initializer())
+            self.sess.run(tf.global_variables_initializer())
 
-        for iter in range(num_iters):
+            train_loss_log = []
+            test_loss_log = []
+            iter_log = []
 
-            if iter%1000 == 0:
-                train_loss_np, test_loss_np, corr_metric = self.sess.run([self.train_loss, self.test_loss,self.corr_metric],
-                feed_dict={'ground:0':self.M, 'mask:0':self.S_train})
-                train_loss_log.append(train_loss_np)
-                test_loss_log.append(test_loss_np)
-                iter_log.append(iter)
-                if (plot) and (iter%5000 == 0):
-                    IPython.display.clear_output()
+            for iter in range(num_iters):
 
-                    print("iter " + str(iter) +" ,train loss: "+str(train_loss_np)+", test loss: " + str(test_loss_np) )
-                    print("Hyperparameters: lr: {}, m: {}, n: {}".format(self.lr, self.m, self.n))
-                    X_np = self.sess.run(self.X)
-                    fig, ax = plt.subplots(1,3, figsize=(15,5))
-                    ax[0].imshow(self.M)
-                    ax[0].set_title("True")
-                    ax[1].imshow(X_np)
-                    ax[1].set_title("X")
-                    ax[2].plot(iter_log[3:], train_loss_log[3:], 'r', iter_log[3:], test_loss_log[3:], 'b')
-                    ax[2].set_title("Train and Test Loss")
-                    plt.legend(['Train Loss','Test Loss'])
-                    plt.show()
-                    print('cor: ',corr_metric)
-                summary_dic = {'learning_rate':self.lr,'m':self.m,'n':self.n,'num_iters':num_iters,
-                               'train_loss':train_loss_log[-1],'test_loss':test_loss_log[-1],
-                               'best_train_loss':np.array(train_loss_log).min(),'best_test_loss':np.array(test_loss_log).min()}
+                if iter%1000 == 0:
+                    train_loss_np, test_loss_np, corr_metric = self.sess.run([self.train_loss, self.test_loss,self.corr_metric],
+                    feed_dict={'ground:0':self.M, 'mask:0':self.S_train.astype(float)})
+                    train_loss_log.append(train_loss_np)
+                    test_loss_log.append(test_loss_np)
+                    iter_log.append(iter)
+                    if (plot) and (iter%5000 == 0):
+                        IPython.display.clear_output()
 
-                self.summary_dic = summary_dic
+                        print("iter " + str(iter) +" ,train loss: "+str(train_loss_np)+", test loss: " + str(test_loss_np) )
+                        print("Hyperparameters: lr: {}, m: {}, n: {}".format(self.lr, self.m, self.n))
+                        X_np = self.sess.run(self.X)
+                        fig, ax = plt.subplots(1,3, figsize=(15,5))
+                        ax[0].imshow(self.M)
+                        ax[0].set_title("True")
+                        ax[1].imshow(X_np)
+                        ax[1].set_title("X")
+                        ax[2].plot(iter_log[3:], train_loss_log[3:], 'r', iter_log[3:], test_loss_log[3:], 'b')
+                        ax[2].set_title("Train and Test Loss")
+                        plt.legend(['Train Loss','Test Loss'])
+                        plt.show()
+                        print('cor: ',corr_metric)
+                    summary_dic = {'learning_rate':self.lr,'m':self.m,'n':self.n,'num_iters':num_iters,
+                                   'train_loss':train_loss_log[-1],'test_loss':test_loss_log[-1],
+                                   'best_train_loss':np.array(train_loss_log).min(),'best_test_loss':np.array(test_loss_log).min()}
 
-            self.sess.run(self.opt_op,feed_dict={'lr:0':self.lr})
-            # self.sess.run(self.opt_op)
+                    self.summary_dic = summary_dic
+
+                self.sess.run(self.opt_op,feed_dict={'lr:0':self.lr})
+                # self.sess.run(self.opt_op)
 
     def _compute_laplacians(self, W_rows, W_cols):
         # produce Laplacians of the row and column graphs
@@ -180,11 +191,9 @@ class FMC:
         flat_mask = tf.cast(flat_mask, tf.bool) #astype boolean mask
         ground_linear = tf.boolean_mask(tf.reshape(ground,[-1]), flat_mask)
         pred_linear = tf.boolean_mask(tf.reshape(pred,[-1]), flat_mask)
-        # corr = tfp.stats.correlation(ground_linear,pred_linear)
+
         corr = tf.contrib.metrics.streaming_pearson_correlation(ground_linear,pred_linear)
-        #corr = np.corrcoef(ground.flatten()[flat_mask],pred.flatten()[flat_mask])
-        # return corr[0][-1]
-        # return [ground_linear, pred_linear]
+
         return corr
 
     def _to_numpy(self,arrays):
