@@ -60,8 +60,6 @@ class FMC:
                     eig_vals_row,eig_vals_col,p_max,q_max,p_init,q_init,m,n):
         """Create graph"""
 
-        # tf.reset_default_graph()
-
         lr = tf.placeholder(tf.float32, name="lr")
         C_init = np.zeros([p_max, q_max], dtype = np.float32)
         #C_init = np.zeros([m, n], dtype = np.float32)
@@ -141,11 +139,13 @@ class FMC:
                     #Compute correlation
                     train_ground, train_pred = train_corr
                     test_ground, test_pred = test_corr
-                    
+
                     train_corr_np = np.corrcoef(train_ground,train_pred)[0][-1]
                     test_corr_np = np.corrcoef(test_ground,test_pred)[0][-1]
                     train_corr_log.append(train_corr_np)
                     test_corr_log.append(test_corr_np)
+
+                    best_test_corr = np.array(test_corr_log).max()
 
                     #Record iteration
                     iter_log.append(iter)
@@ -153,32 +153,39 @@ class FMC:
                         IPython.display.clear_output()
 
                         print("iter " + str(iter) +" ,train loss: "+str(train_loss_np)+", test loss: " + str(test_loss_np)\
-                               + " ,train corr: " + str(train_corr_np) + " ,test corr: " + str(test_corr_np))
+                               + " ,train corr: " + str(train_corr_np) + " ,test corr: " + str(test_corr_np)\
+                               + " ,best test corr: ", str(best_test_corr))
                         print("Hyperparameters: lr: {}, m: {}, n: {}".format(self.lr, self.m, self.n))
                         X_np = self.sess.run(self.X)
-                        fig, ax = plt.subplots(1,2, figsize=(15,5))
+
                         if self.cluster:
 
-                            cg1 = sns.clustermap(self.M,
-                                row_linkage=self.linkage,
-                                col_linkage=self.linkage,figsize=(6,6))
+                            #First create the clustermap figure
+                            cg = sns.clustermap(X_np,row_linkage=self.linkage,col_linkage=self.linkage,figsize=(15,6))
+                            # set the gridspec to only cover half of the figure
+                            cg.gs.update(left=0.05, right=0.45)
 
-                            cg2 = sns.clustermap(X_np,
-                                row_linkage=self.linkage,
-                                col_linkage=self.linkage,figsize=(6,6))
+                            #create new gridspec for the right part
+                            gs2 = matplotlib.gridspec.GridSpec(1,1, left=0.6)
+                            # create axes within this new gridspec
+                            ax2 = cg.fig.add_subplot(gs2[0])
+                            # plot boxplot in the new axes
+                            ax2.plot(iter_log[3:], train_loss_log[3:], 'r', iter_log[3:], test_loss_log[3:], 'b')
+                            plt.show()
 
                         else:
+                            fig, ax = plt.subplots(1,2, figsize=(15,5))
                             ax[0].imshow(self.M)
                             ax[0].set_title("True")
                             ax[1].imshow(X_np)
                             ax[1].set_title("X")
-                        ax[0].plot(iter_log[3:], train_loss_log[3:], 'r', iter_log[3:], test_loss_log[3:], 'b')
-                        ax[0].set_title("Train and Test Loss")
-                        ax[1].plot(iter_log[3:], train_corr_log[3:], 'r', iter_log[3:], test_corr_log[3:], 'b')
-                        ax[1].set_title("Train and Test Correlation")
-                        plt.legend(['Train Loss','Test Loss'])
-                        plt.show()
-                        display(grid)
+                            ax[0].plot(iter_log[3:], train_loss_log[3:], 'r', iter_log[3:], test_loss_log[3:], 'b')
+                            ax[0].set_title("Train and Test Loss")
+                            ax[1].plot(iter_log[3:], train_corr_log[3:], 'r', iter_log[3:], test_corr_log[3:], 'b')
+                            ax[1].set_title("Train and Test Correlation")
+                            plt.legend(['Train Loss','Test Loss'])
+                            plt.show()
+                            display(grid)
 
 
 
@@ -186,7 +193,7 @@ class FMC:
                                    'train_loss':train_loss_log[-1],'test_loss':test_loss_log[-1],
                                    'best_train_loss':np.array(train_loss_log).min(),'best_test_loss':np.array(test_loss_log).min(),
                                    'train_corr':train_corr_log[-1],'test_corr':test_corr_log[-1],
-                                   'best_train_corr':np.array(train_corr_log).max(),'best_test_corr':np.array(test_corr_log).max()}
+                                   'best_train_corr':np.array(train_corr_log).max(),'best_test_corr':best_test_corr}
 
                     self.summary_dic = summary_dic
 
