@@ -25,8 +25,6 @@ class FMC:
     def __init__(self,M,M_training,M_test,S_training,S_test,
                  W_rows,W_cols,p_max,q_max,p_init,q_init,lr,m,n,use_side=True,cluster=True):
 
-
-
         self.lr = lr
         self.m = m
         self.n = n
@@ -54,6 +52,13 @@ class FMC:
                         eig_vals_row,eig_vals_col,p_max,q_max,p_init,q_init,m,n)
 
 
+            # Create a session for running Ops on the Graph.
+            self.config = tf.ConfigProto(allow_soft_placement=True)
+            self.config.gpu_options.allow_growth = True
+            # self.sess = tf.Session(config=self.config)
+            self.sess = tf.Session(config=self.config)
+            self.sess.run(tf.local_variables_initializer())
+            self.sess.run(tf.global_variables_initializer())
 
 
     def build_model(self,M_training,M_test,S_training,S_test,eig_vecs_row,eig_vecs_col,
@@ -110,14 +115,6 @@ class FMC:
     def fit(self, num_iters, grid=[], plot=False):
         g = self.tf_graph
         with g.as_default():
-            # Create a session for running Ops on the Graph.
-            self.config = tf.ConfigProto(allow_soft_placement=True)
-            self.config.gpu_options.allow_growth = True
-            # self.sess = tf.Session(config=self.config)
-            self.sess = tf.Session(config=self.config)
-
-            self.sess.run(tf.local_variables_initializer())
-            self.sess.run(tf.global_variables_initializer())
 
             train_loss_log = []
             test_loss_log = []
