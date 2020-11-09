@@ -19,13 +19,16 @@ import matplotlib.pyplot as plt
 from numpy import linalg as npla
 from numpy import matlib
 import IPython
+plt.rcParams["axes.grid"] = False
 
 class FMC:
     "Functional geometric matrix completion"
     def __init__(self,M,M_training,M_test,S_training,S_test,
-                 W_rows,W_cols,p_max,q_max,p_init,q_init,lr,m,n,use_side=True,cluster=True):
+                 W_rows,W_cols,p_max,q_max,p_init,q_init,lr,m,n,
+                 reg_param = 0.00001, use_side=True,cluster=True,adam=False):
 
         self.lr = lr
+        self.reg_param = reg_param
         self.m = m
         self.n = n
         self.M = M
@@ -33,6 +36,8 @@ class FMC:
         self.S_test = S_test
         self.cluster = cluster
         self.linkage = linkage(M, method='ward')
+        self.adam = adam
+
 
         if use_side:
             L_rows, L_cols = self._compute_laplacians(W_rows, W_cols)
@@ -98,8 +103,12 @@ class FMC:
         right_mul = tf.matmul(tf.diag(lambda_row_tf),C_new)
         E_comm = self._squared_frobenius_norm(left_mul-right_mul)
 
-        E_tot = E_data + 0.00001*E_comm
-        optimizer = tf.train.GradientDescentOptimizer(learning_rate=lr)
+        E_tot = E_data + self.reg_param*E_comm
+        if self.adam:
+            optimizer = tf.train.AdamOptimizer(learning_rate=lr)
+        else:
+            optimizer = tf.train.GradientDescentOptimizer(learning_rate=lr)
+
         self.opt_op = optimizer.minimize(E_tot)
 
         #Metrics
@@ -112,7 +121,7 @@ class FMC:
 
         self.corr_metric = self._corr_metric(ground=ground, pred=self.X, mask=mask)
 
-    def fit(self, num_iters, grid=[], plot=False):
+    def fit(self, num_iters, grid=[], plot=False, tune=False):
         g = self.tf_graph
         with g.as_default():
 
@@ -171,17 +180,20 @@ class FMC:
                             plt.show()
 
                         else:
-                            fig, ax = plt.subplots(1,2, figsize=(15,5))
+                            fig, ax = plt.subplots(1,4, figsize=(15,5))
                             ax[0].imshow(self.M)
                             ax[0].set_title("True")
                             ax[1].imshow(X_np)
-                            ax[1].set_title("X")
-                            ax[0].plot(iter_log[3:], train_loss_log[3:], 'r', iter_log[3:], test_loss_log[3:], 'b')
-                            ax[0].set_title("Train and Test Loss")
-                            ax[1].plot(iter_log[3:], train_corr_log[3:], 'r', iter_log[3:], test_corr_log[3:], 'b')
-                            ax[1].set_title("Train and Test Correlation")
-                            plt.legend(['Train Loss','Test Loss'])
+                            ax[1].set_title("Training Reconstruction")
+                            ax[2].plot(iter_log[3:], train_loss_log[3:], 'r', iter_log[3:], test_loss_log[3:], 'b')
+                            ax[2].set_title("Train and Test Loss")
+                            ax[2].legend(['Train Loss','Test Loss'])
+                            ax[3].plot(iter_log[3:], train_corr_log[3:], 'r', iter_log[3:], test_corr_log[3:], 'b')
+                            ax[3].set_title("Train and Test Correlation")
+                            ax[3].legend(['Train Corr','Test Corr'])
                             plt.show()
+
+                        if tune:
                             display(grid)
 
 
