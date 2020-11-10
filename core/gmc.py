@@ -30,7 +30,11 @@ class GMC:
 
 
 
-    def fit(self, num_iters, grid=[], plot=False, tune=False):
+    def fit(self, num_iters, grid=[], plot=False, tune=False, cluster=True):
+
+        if cluster:
+            self.linkage = linkage(self.M, method='ward')
+
         g = self.tf_graph
         with g.as_default():
 
@@ -73,7 +77,7 @@ class GMC:
                         print("Hyperparameters: lr: {}, m: {}, n: {}".format(self.lr, self.m, self.n))
                         X_np = self.sess.run(self.X)
 
-                        if self.cluster:
+                        if cluster:
 
                             #First create the clustermap figure
                             cg = sns.clustermap(X_np,row_linkage=self.linkage,col_linkage=self.linkage,figsize=(15,6))
@@ -130,7 +134,7 @@ class GMC:
         eig_vals_row, eig_vecs_row = self._eigen(L_rows)
         eig_vals_col, eig_vecs_col = self._eigen(L_cols)
 
-        return eig_vals_row[0:m], eig_vecs_row[:,0:m], eig_vals_col[0:n], eig_vecs_col[:,0:n]
+        return eig_vals_row, eig_vecs_row, eig_vals_col, eig_vecs_col
 
     def _eigen(self, A):
         eigenValues, eigenVectors = npla.eigh(A)
