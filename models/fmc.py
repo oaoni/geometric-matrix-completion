@@ -44,7 +44,7 @@ class FMC(GMC):
 
         if use_side:
             L_rows, L_cols = self._compute_laplacians(W_rows, W_cols)
-            eig_vals_row, eig_vecs_row, eig_vals_col, eig_vecs_col = self._compute_eigs(L_rows, L_cols, m, n)
+            eig_vals_row, eig_vecs_row, eig_vals_col, eig_vecs_col = self._compute_eigs(L_rows, L_cols)
         else:
             eig_vecs_row = np.zeros((M.shape[0], m))
             eig_vecs_col = np.zeros((M.shape[1], n))
@@ -103,6 +103,10 @@ class FMC(GMC):
         E_data = self._squared_frobenius_norm(tf.multiply(self.X, S_training) - M_training)
 
         C_new_t = tf.transpose(C_new)
+        print('C_new',C_new.shape)
+        print('C_new_t',C_new_t.shape)
+        print('lambda_row_tf',lambda_row_tf.shape)
+        print('lambda_col_tf',lambda_col_tf.shape)
         left_mul = tf.matmul(C_new, tf.diag(lambda_col_tf))
         right_mul = tf.matmul(tf.diag(lambda_row_tf),C_new)
         E_comm = self._squared_frobenius_norm(left_mul-right_mul)
@@ -129,7 +133,7 @@ class FMCv2(GMC):
     "Functional geometric matrix completion"
     def __init__(self,M,M_training,M_test,S_training,S_test,
                  W_rows,W_cols,p_max,q_max,p_init,q_init,lr,m,n,mat_init=False,
-                 reg_param = 0.00001, use_side=True,adam=False,name='Model'):
+                 init_rank=False,reg_param = 0.00001, use_side=True,adam=False,name='Model'):
         """Constructor"""
         GMC.__init__(self,name)
 
@@ -141,7 +145,6 @@ class FMCv2(GMC):
         self.S_train = S_training
         self.S_test = S_test
         self.adam = adam
-        self.mat_init = mat_init
 
 
         if use_side:
@@ -158,7 +161,7 @@ class FMCv2(GMC):
         with g.as_default():
             #Build model
             self.build_model(M_training,M_test,S_training,S_test,eig_vecs_row,eig_vecs_col,
-                        eig_vals_row,eig_vals_col,p_max,q_max,p_init,q_init,m,n)
+                        eig_vals_row,eig_vals_col,p_max,q_max,p_init,q_init,m,n,mat_init,init_rank)
 
 
             # Create a session for running Ops on the Graph for the given model.
@@ -170,27 +173,35 @@ class FMCv2(GMC):
 
 
     def build_model(self,M_training,M_test,S_training,S_test,eig_vecs_row,eig_vecs_col,
-                    eig_vals_row,eig_vals_col,p_max,q_max,p_init,q_init,m,n):
-        """Create graph"""
+                    eig_vals_row,eig_vals_col,p_max,q_max,p_init,q_init,m,n,mat_init,init_rank):
+        """Create v2 graph"""
 
         lr = tf.placeholder(tf.float32, name="lr")
 
-        if isinstance(self.mat_init,np.ndarray):
-            C_init = self.mat_init
+        if isinstance(mat_init,np.ndarray):
+
+            U,S,Vh = np.linalg.svd(mat_init, full_matrices =False)
+
+            P_init = U[:,0:init_rank]
+
+            C_init = np.diag(S[0:init_rank])
+
+            Q_init = Vh[0:init_rank,:].T
         else:
-            C_init = np.zeros([p_max, q_max], dtype = np.float32)
+
+            P_init = np.eye(p_max, m)
+
+            C_init = np.zeros([m, m], dtype = np.float32)
             C_init[p_init-1,q_init-1] = np.matmul(np.matmul(np.transpose(eig_vecs_row[:, 0:p_init]),M_training), eig_vecs_col[:, 0:q_init])
 
+            Q_init = np.eye(q_max, m)
 
-        P_init = np.eye(m, p_max)
-        Q_init = np.eye(n, q_max)
 
         C_tf = tf.Variable(C_init, trainable=True, dtype=tf.float32)
-        #C_tf = tf.Variable(np.matmul(np.matmul(P_init, C_init), np.transpose(Q_init)), trainable=True, dtype=tf.float32)
         P_tf = tf.Variable(P_init, trainable=True, dtype=tf.float32)
         Q_tf = tf.Variable(Q_init, trainable=True, dtype=tf.float32)
         C_new = tf.matmul(tf.matmul(P_tf, C_tf), tf.transpose(Q_tf)) #check
-        #C_new = C_tf
+
         Phi_tf = tf.constant(eig_vecs_row, dtype=tf.float32)
         Psi_tf = tf.constant(eig_vecs_col, dtype=tf.float32)
         lambda_row_tf = tf.constant(eig_vals_row, dtype=tf.float32)

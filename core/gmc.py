@@ -129,7 +129,7 @@ class GMC:
 
         return L_rows, L_cols
 
-    def _compute_eigs(self, L_rows, L_cols, m, n):
+    def _compute_eigs(self, L_rows, L_cols):
         # extract eigenvectors of row and column graph laplacians
         eig_vals_row, eig_vecs_row = self._eigen(L_rows)
         eig_vals_col, eig_vecs_col = self._eigen(L_cols)
