@@ -82,14 +82,22 @@ class GMC:
                             #First create the clustermap figure
                             cg = sns.clustermap(X_np,row_linkage=self.linkage,col_linkage=self.linkage,figsize=(15,6))
                             # set the gridspec to only cover half of the figure
-                            cg.gs.update(left=0.05, right=0.45)
+                            cg.gs.update(left=0.05, right=0.4)
 
                             #create new gridspec for the right part
-                            gs2 = matplotlib.gridspec.GridSpec(1,1, left=0.6)
+                            gs2 = matplotlib.gridspec.GridSpec(1,1, left=0.45, right=0.7)
+                            gs3 = matplotlib.gridspec.GridSpec(1,1, left=0.75, right=1.0)
                             # create axes within this new gridspec
                             ax2 = cg.fig.add_subplot(gs2[0])
+                            ax3 = cg.fig.add_subplot(gs3[0])
                             # plot boxplot in the new axes
                             ax2.plot(iter_log[3:], train_loss_log[3:], 'r', iter_log[3:], test_loss_log[3:], 'b')
+                            ax2.set_title("Train and Test Loss")
+                            ax2.legend(['Train Loss','Test Loss'])
+
+                            ax3.plot(iter_log[3:], train_corr_log[3:], 'r', iter_log[3:], test_corr_log[3:], 'b')
+                            ax3.set_title("Train and Test Correlation")
+                            ax3.legend(['Train Corr','Test Corr'])
                             plt.show()
 
                         else:
