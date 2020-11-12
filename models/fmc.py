@@ -40,6 +40,9 @@ class FMC(GMC):
         self.S_test = S_test
         self.adam = adam
         self.mat_init = mat_init
+        self.mu = 'n/a'
+        self.rho = 'n/a'
+        self.alpha = 'n/a'
 
 
         if use_side:
@@ -103,10 +106,6 @@ class FMC(GMC):
         E_data = self._squared_frobenius_norm(tf.multiply(self.X, S_training) - M_training)
 
         C_new_t = tf.transpose(C_new)
-        print('C_new',C_new.shape)
-        print('C_new_t',C_new_t.shape)
-        print('lambda_row_tf',lambda_row_tf.shape)
-        print('lambda_col_tf',lambda_col_tf.shape)
         left_mul = tf.matmul(C_new, tf.diag(lambda_col_tf))
         right_mul = tf.matmul(tf.diag(lambda_row_tf),C_new)
         E_comm = self._squared_frobenius_norm(left_mul-right_mul)
@@ -145,11 +144,14 @@ class FMCv2(GMC):
         self.S_train = S_training
         self.S_test = S_test
         self.adam = adam
+        self.mu = 'n/a'
+        self.rho = 'n/a'
+        self.alpha = 'n/a'
 
 
         if use_side:
             L_rows, L_cols = self._compute_laplacians(W_rows, W_cols)
-            eig_vals_row, eig_vecs_row, eig_vals_col, eig_vecs_col = self._compute_eigs(L_rows, L_cols, m, n)
+            eig_vals_row, eig_vecs_row, eig_vals_col, eig_vecs_col = self._compute_eigs(L_rows, L_cols)
         else:
             eig_vecs_row = np.zeros((M.shape[0], m))
             eig_vecs_col = np.zeros((M.shape[1], n))

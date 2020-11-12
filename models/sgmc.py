@@ -37,6 +37,9 @@ class SGMC(GMC):
         self.S_test = S_test
         self.adam = adam
         self.mat_init = mat_init
+        self.mu = mu_r
+        self.rho = rho_r
+        self.alpha = alpha
 
 
 

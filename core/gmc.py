@@ -7,6 +7,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.gridspec
 from scipy.cluster.hierarchy import linkage
+from tqdm.notebook import trange, tqdm
 
 random.seed(0)
 np.random.seed(0)
@@ -44,9 +45,14 @@ class GMC:
             test_corr_log = []
             iter_log = []
 
-            for iter in range(num_iters):
+            if tune:
+                IPython.display.clear_output()
+                display(grid)
 
-                if iter%1000 == 0:
+            for iter in trange(num_iters, desc='Training w/ Params LR: {}, mu: {}, rho: {}, alpha: {}'.format(self.lr,
+                               self.mu, self.rho, self.alpha)):
+
+                if iter%500 == 0:
                     #Compute training and test loss
                     train_loss_np, test_loss_np = self.sess.run([self.train_loss, self.test_loss])
                     train_loss_log.append(train_loss_np)
@@ -114,12 +120,12 @@ class GMC:
                             ax[3].legend(['Train Corr','Test Corr'])
                             plt.show()
 
-                        if tune:
-                            display(grid)
 
 
 
-                    summary_dic = {'learning_rate':self.lr,'m':self.m,'n':self.n,'num_iters':num_iters,
+                    #Make summary dic a model self method
+                    summary_dic = {'learning_rate':self.lr,'m':self.m,'n':self.n,'mu':self.mu,'rho':self.rho,'alpha':self.alpha,
+                                   'num_iters':num_iters,
                                    'train_loss':train_loss_log[-1],'test_loss':test_loss_log[-1],
                                    'best_train_loss':np.array(train_loss_log).min(),'best_test_loss':np.array(test_loss_log).min(),
                                    'train_corr':train_corr_log[-1],'test_corr':test_corr_log[-1],
