@@ -1,6 +1,7 @@
+import os
+os.environ["CUDA_VISIBLE_DEVICES"]="1,2,3"
 import numpy as np
 import matplotlib
-import os
 import tensorflow as tf
 #import numpy as np
 import random

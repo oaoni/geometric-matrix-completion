@@ -1,4 +1,6 @@
 #Functional geometric matrix completion
+import os
+os.environ["CUDA_VISIBLE_DEVICES"]="1,2,3"
 import matplotlib
 import tensorflow as tf
 import numpy as np
@@ -33,6 +35,8 @@ class GMC:
 
     def fit(self, num_iters, grid=[], plot=False, tune=False, cluster=True):
 
+
+
         if cluster:
             self.linkage = linkage(self.M, method='ward')
 
@@ -48,11 +52,11 @@ class GMC:
             if tune:
                 IPython.display.clear_output()
                 display(grid)
-
+            best_test_corr = 0
             for iter in trange(num_iters, desc='Training w/ Params LR: {}, mu: {}, rho: {}, alpha: {}'.format(self.lr,
                                self.mu, self.rho, self.alpha)):
 
-                if iter%500 == 0:
+                if iter%50 == 0:
                     #Compute training and test loss
                     train_loss_np, test_loss_np = self.sess.run([self.train_loss, self.test_loss])
                     train_loss_log.append(train_loss_np)
