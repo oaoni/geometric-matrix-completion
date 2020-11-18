@@ -76,15 +76,20 @@ class FMC(GMC):
 
         lr = tf.placeholder(tf.float32, name="lr")
 
-        if isinstance(self.mat_init,np.ndarray):
-            C_init = self.mat_init
-        else:
-            C_init = np.zeros([p_max, q_max], dtype = np.float32)
-            C_init[p_init-1,q_init-1] = np.matmul(np.matmul(np.transpose(eig_vecs_row[:, 0:p_init]),M_training), eig_vecs_col[:, 0:q_init])
+        # if isinstance(self.mat_init,np.ndarray):
+        #     C_init = self.mat_init
+        # else:
+        #     C_init = np.zeros([p_max, q_max], dtype = np.float32)
+        #     C_init[p_init-1,q_init-1] = np.matmul(np.matmul(np.transpose(eig_vecs_row[:, 0:p_init]),M_training), eig_vecs_col[:, 0:q_init])
 
+        # P_init = (10**(-alpha))*np.eye(m, p_max)
+        # C_init = (10**(-alpha))*np.eye(p_max, q_max)
+        # Q_init = (10**(-alpha))*np.eye(n, q_max)
 
-        P_init = np.eye(m, p_max)
-        Q_init = np.eye(n, q_max)
+        alpha = 2
+        P_init = (10**(-alpha))*np.eye(m, p_max)
+        Q_init = (10**(-alpha))*np.eye(n, q_max)
+        C_init = (10**(-alpha))*np.eye(p_max, q_max)
 
         C_tf = tf.Variable(C_init, trainable=True, dtype=tf.float32)
         #C_tf = tf.Variable(np.matmul(np.matmul(P_init, C_init), np.transpose(Q_init)), trainable=True, dtype=tf.float32)
