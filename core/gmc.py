@@ -31,12 +31,9 @@ class GMC:
         #Define the graph
         self.tf_graph = tf.Graph()
 
-
-
     def fit(self, num_iters, grid=[], plot=False, tune=False, cluster=True):
 
-
-
+        #Generate linkages for plot
         if cluster:
             self.linkage = linkage(self.M, method='ward')
 
@@ -48,15 +45,17 @@ class GMC:
             train_corr_log = []
             test_corr_log = []
             iter_log = []
+            best_test_corr = 0
 
             if tune:
                 IPython.display.clear_output()
                 display(grid)
-            best_test_corr = 0
+
             for iter in trange(num_iters, desc='Training w/ Params LR: {}, mu: {}, rho: {}, alpha: {}'.format(self.lr,
                                self.mu, self.rho, self.alpha)):
 
-                if iter%50 == 0:
+                #Record iteration
+                if iter%500 == 0:
                     #Compute training and test loss
                     train_loss_np, test_loss_np = self.sess.run([self.train_loss, self.test_loss])
                     train_loss_log.append(train_loss_np)
@@ -65,6 +64,7 @@ class GMC:
                     #Produce training and test correlation vectors
                     train_corr = self.sess.run(self.corr_metric,feed_dict={'ground:0':self.M, 'mask:0':self.S_train})
                     test_corr = self.sess.run(self.corr_metric,feed_dict={'ground:0':self.M, 'mask:0':self.S_test})
+
                     #Compute correlation
                     train_ground, train_pred = train_corr
                     test_ground, test_pred = test_corr
@@ -76,9 +76,9 @@ class GMC:
 
                     best_test_corr = np.array(test_corr_log).max()
 
-                    #Record iteration
+                    #Print iteration
                     iter_log.append(iter)
-                    if (plot) and (iter%5000 == 0):
+                    if (plot) and (iter%1000 == 0):
                         IPython.display.clear_output()
 
                         print("iter " + str(iter) +" ,train loss: "+str(train_loss_np)+", test loss: " + str(test_loss_np)\
@@ -183,9 +183,29 @@ class GMC:
         # corr = tf.contrib.metrics.streaming_pearson_correlation(ground_linear,pred_linear)
 
         return ground_linear, pred_linear
-
+        # return corr,ground_linear, pred_linear
     def _to_numpy(self,arrays):
 
         arrays_ = [array.values if isinstance(array, pd.DataFrame) else array for array in arrays]
 
         return arrays_
+
+    def _initialize_dmf_var(self, init_vec, shape_vec, eig_vecs_row=None, eig_vecs_col=None,
+                            M_training=None,name=None):
+        """Takes a shape and a list of initializer and alpha modifier"""
+
+        x_shape, y_shape = shape_vec
+        init,alpha = init_vec
+
+        if init == 'eye':
+            v_init = tf.eye(x_shape,y_shape)*alpha
+            var = tf.Variable(v_init,name=name,trainable=True, dtype=tf.float32)
+        elif init == 'alpha_eye':
+            v_init = tf.Variable((10**(-alpha))*tf.eye(x_shape, y_shape), trainable=True, dtype=tf.float32)
+            var = tf.Variable(v_init,name=name,trainable=True, dtype=tf.float32)
+        elif init == 'fmc_default':
+            v_init = np.zeros([x_shape, y_shape], dtype = np.float32)
+            v_init[0,0] = np.matmul(np.matmul(np.transpose(eig_vecs_row[:, 0]),M_training), eig_vecs_col[:, 0])
+            var = tf.Variable(v_init,name=name,trainable=True, dtype=tf.float32)
+
+        return var
