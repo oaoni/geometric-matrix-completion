@@ -1,5 +1,6 @@
 #Package
 
 from .fmc import FMC
-from .fmc import FMCv2
+from .fmc import symFMC
 from .sgmc import SGMC
+from .sgmc import symSGMC
