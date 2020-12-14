@@ -26,10 +26,19 @@ plt.rcParams["axes.grid"] = False
 
 class GMC:
     "Functional geometric matrix completion"
-    def __init__(self, name):
+    def __init__(self, name,process_side,W_rows,W_cols,W_val):
         self.name = name
         #Define the graph
         self.tf_graph = tf.Graph()
+
+        if process_side:
+            L_rows, L_cols = self._compute_laplacians(W_rows, W_cols)
+            self.eig_vals_row, self.eig_vecs_row, self.eig_vals_col, self.eig_vecs_col = self._compute_eigs(L_rows, L_cols)
+        else:
+            self.eig_vals_row = W_val
+            self.eig_vals_col = W_val
+            self.eig_vecs_row = W_rows
+            self.eig_vecs_col = W_cols
 
     def fit(self, num_iters, grid=[], plot=False, tune=False, cluster=True):
 
@@ -55,7 +64,7 @@ class GMC:
                                self.mu, self.rho, self.alpha)):
 
                 #Record iteration
-                if iter%500 == 0:
+                if iter%50 == 0:
                     #Compute training and test loss
                     train_loss_np, test_loss_np = self.sess.run([self.train_loss, self.test_loss])
                     train_loss_log.append(train_loss_np)
@@ -78,7 +87,7 @@ class GMC:
 
                     #Print iteration
                     iter_log.append(iter)
-                    if (plot) and (iter%1000 == 0):
+                    if (plot) and (iter%5000 == 0):
                         IPython.display.clear_output()
 
                         print("iter " + str(iter) +" ,train loss: "+str(train_loss_np)+", test loss: " + str(test_loss_np)\
